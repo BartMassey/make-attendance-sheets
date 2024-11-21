@@ -9,15 +9,24 @@ from sys import stderr
 ap = argparse.ArgumentParser()
 ap.add_argument("--start", help="start date (+<days>, <date>, default today)")
 ap.add_argument("--students", help="student list file", default = "student-emails.txt")
-ap.add_argument("--dest", help="output file", default = "attendance.pdf")
+ap.add_argument("--dest", help="output file", default = "attendance-sheets.pdf")
 ap.add_argument("course", help="course title")
 ap.add_argument("days", help="meeting days (MUWH)")
 ap.add_argument("count", type=int, help="number of meetings")
 args = ap.parse_args()
 
+def grab_name(s):
+    p = s.find(" <")
+    if p > 0:
+        return s[:p]
+    else:
+        return s
+
 try:
     with open(args.students, "r") as f:
-        students = f.read()
+        lines = f.read().splitlines()
+        lines.sort(key=lambda s: s.split()[1])
+        students = '\n'.join([grab_name(s) for s in lines])
 except IOError as e:
     print(e, file=stderr)
     exit(1)
@@ -47,7 +56,19 @@ def first_day(start):
     return min(start + delta(weekday = d) for d in day_list)
 
 start = first_day(start)
-
+pdf = FPDF('P', 'pt', 'Letter')
 for _ in range(args.count):
-    print(start)
+    pdf.add_page()
+    pdf.set_font('Arial', 'B', 16)
+    date = start.strftime("%a %Y-%m-%d")
+    header = "Attendance -- " + " " + args.course + " -- " + date + "\n\n"
+    pdf.write(20, header)
+    pdf.set_font('Arial', '', 16)
+    pdf.write(20, students)
+
     start = first_day(start + delta(days=1))
+try:
+    pdf.output(args.dest, 'F')
+except Exception as e:
+    print(f"pdf output: {e}", file=stderr)
+    exit(1)
