@@ -1,2 +1,2 @@
 python-dateutil
-fpdf
+fpdf2==2.8.2
